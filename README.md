@@ -21,8 +21,8 @@ Run this command:
 ./setup_keys.sh
 
 This will create:
-- a private key (age_key.txt) → keep it safe
-- a public key → copy this
+- a private key (age_key.txt), keep it safe
+- a public key, copy this
 
 ---
 
