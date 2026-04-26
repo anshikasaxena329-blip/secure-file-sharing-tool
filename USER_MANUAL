@@ -1,0 +1,92 @@
+# User Manual – Secure File Sharing Tool
+
+## What this tool does
+
+This tool is used to send files securely from one user to another using the terminal.
+It encrypts the file before sending so that only the receiver can read it.
+
+It also checks if the file is changed during transfer using a checksum.
+Only the receiver with the correct private key can decrypt the file.
+
+---
+
+## How to send a file (Sender Side)
+
+Step 1: Create or select a file
+
+echo "This is a test file" > notes.txt
+
+---
+
+Step 2: Send the file
+
+./send.sh notes.txt
+
+This will:
+- generate checksum
+- encrypt the file
+- send it to receiver_folder
+- save details in log file
+
+---
+
+## How to receive the file (Receiver Side)
+
+Step 1: Go to receiver folder
+
+cd receiver_folder
+
+---
+
+Step 2: Decrypt and verify
+
+../receive.sh notes.txt.age
+
+This will:
+- decrypt the file
+- check checksum
+- show result
+
+---
+
+## Output
+
+If correct:
+
+Decryption successful
+File integrity verified
+
+If error:
+
+File corrupted or tampered
+
+---
+
+## Do’s and Don’ts
+
+Do’s:
+- use the script to send files
+- verify file after receiving
+- keep private key safe
+
+Don’ts:
+- do not share private key
+- do not send unencrypted files
+- do not edit encrypted files
+
+---
+
+## Example Commands
+
+echo "Hello" > notes.txt
+./send.sh notes.txt
+cd receiver_folder
+../receive.sh notes.txt.age
+
+---
+
+## Final Note
+
+This tool is simple and useful for secure file sharing.
+Follow the steps properly and keep your keys safe.
+
