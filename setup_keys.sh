@@ -1,23 +1,44 @@
 #!/bin/bash
 
-# ===============================
-# This script creates AGE keys
-# ===============================
+# This script is used to generate AGE encryption keys
 
-echo " Setting up AGE keys..."
+# It creates a private key and shows the public key for sharing
 
-# check if key already exists
+echo "[+] Setting up AGE keys..."
+
+# First check if age-keygen is installed or not
+
+if ! command -v age-keygen &> /dev/null; then
+echo "Error: age-keygen is not installed!"
+exit 1
+fi
+
+# Check if key already exists so we don't overwrite it
+
 if [ -f "age_key.txt" ]; then
-    echo "AGE key already exists"
+echo "AGE key already exists."
+echo "If you want a new key, delete age_key.txt first."
 else
-    # create new age key
-    age-keygen -o age_key.txt
+# Generate new key
+age-keygen -o age_key.txt
 
-    echo ""
-    echo " Key created"
-    echo ""
+```
+# Protect the private key (only owner can read/write)
+chmod 600 age_key.txt
 
-    # show public key (this is needed in send.sh)
-    echo " COPY THIS PUBLIC KEY and paste in send.sh:"
-    grep "public key:" age_key.txt
+echo "[✔] Key generated successfully"
+
+# Extract public key from file
+PUBKEY=$(grep "public key:" age_key.txt | awk '{print $4}')
+
+echo ""
+echo "IMPORTANT:"
+echo "- Do NOT share your private key (age_key.txt)"
+echo "- Share this public key with sender"
+echo ""
+
+echo "Your Public Key:"
+echo "$PUBKEY"
+```
+
 fi
