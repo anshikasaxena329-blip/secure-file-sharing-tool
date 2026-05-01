@@ -2,132 +2,216 @@
 
 ## Project Description
 
-This project is about sending files securely using the command line.
+This project implements a simple secure file sharing system using the command line. The goal is to safely transfer files between users so that:
 
-The main idea is simple:
+- only the intended receiver can read the file  
+- the file is not modified during transfer  
+- the process is simple and reliable  
 
-* before sending a file, we encrypt it
-* only the receiver can decrypt it
-* we also check if the file was changed during transfer using checksum
+This is useful when sharing sensitive data like reports, notes, or images where security and integrity are important.
 
-This is useful when we are sending sensitive data like reports, notes, images, etc. so that no one else can read or modify it.
+---
 
+## System Overview
 
+The system works in the following steps:
 
-## What this tool does
+1. The sender selects a file  
+2. A checksum (sha256) is generated for the file  
+3. The file is encrypted using the receiver’s public key (age)  
+4. The encrypted file is transferred using SSH (scp)  
+5. The receiver decrypts the file using their private key  
+6. The checksum is verified to ensure the file was not altered  
+7. The transfer is recorded in a log file  
 
-* encrypts file using **age**
-* sends file using **SSH (scp)**
-* checks file integrity using **sha256 checksum**
-* keeps a record of transfers in a log file
+---
 
+## Tools Used
 
+- age → used for file encryption and decryption  
+- scp (SSH) → used for secure file transfer  
+- sha256sum → used for generating and verifying checksums  
+- bash scripting → used to automate the workflow  
+
+These tools were chosen because they are simple, secure, and available on most Linux systems.
+
+---
+
+## Project Structure
+
+secure-share/
+├── send.sh  
+├── receive.sh  
+├── setup_keys.sh  
+├── transfer.log  
+├── README.md  
+
+---
 
 ## Setup Instructions
 
-### Step 1: Generate keys
+### 1. Generate Encryption Keys
 
 Run:
 
-```bash
+```
 ./setup_keys.sh
 ```
 
-This will create:
+This script:
+- generates a private key (age_key.txt)  
+- generates a public key  
+- prints the public key  
 
-* `age_key.txt` → this is private, do NOT share
-* public key → copy this and use in `send.sh`
+The private key must be kept secret. The public key is shared with the sender.
 
+---
 
-### Step 2: Add public key
+### 2. Configure Public Key in Sender
 
-Open `send.sh`:
+Open the sender script:
 
-```bash
+```
 nano send.sh
 ```
 
-Find:
+Find this line:
 
-```bash
+```
 PUBKEY="PASTE_YOUR_PUBLIC_KEY_HERE"
 ```
 
-Paste your public key (starting with `age1...`)
+Replace it with the public key generated from setup_keys.sh.
 
+---
 
+### 3. Setup SSH Access
 
-## How to run the system
+To enable secure transfer, SSH key-based login must be configured:
 
-### Sender side
+```
+ssh-keygen -t ed25519
+cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys
+```
 
-Create a test file:
+Test:
 
-```bash
+```
+ssh localhost
+```
+
+---
+
+## How the Code Works
+
+### setup_keys.sh
+
+- Generates keys using age-keygen  
+- Stores private key in age_key.txt  
+- Prints public key  
+- Ensures private key is kept secret  
+
+---
+
+### send.sh
+
+This script performs sender operations:
+
+1. Checks if the file exists  
+2. Generates checksum using:
+```
+sha256sum file.txt
+```
+
+3. Encrypts file:
+```
+age -r PUBLIC_KEY -o file.txt.age file.txt
+```
+
+4. Transfers files:
+```
+scp file.txt.age user@host:
+scp file.txt.checksum user@host:
+```
+
+5. Logs the transfer in transfer.log  
+
+---
+
+### receive.sh
+
+This script performs receiver operations:
+
+1. Checks if encrypted file exists  
+2. Decrypts file:
+```
+age -d -i age_key.txt -o file.txt file.txt.age
+```
+
+3. Generates new checksum:
+```
+sha256sum file.txt
+```
+
+4. Compares checksum with original  
+
+5. Displays result:
+- match → file is correct  
+- mismatch → file is corrupted  
+
+6. Logs result in transfer.log  
+
+---
+
+## Running the System
+
+### Sender Side
+
+Create a file:
+
+```
 echo "this is a test file" > text.txt
 ```
 
 Send file:
 
-```bash
+```
 ./send.sh text.txt localhost
 ```
 
-or
+---
 
-```bash
-./send.sh text.txt user@IP
-```
-
-What happens:
-
-* checksum is created
-* file is encrypted
-* encrypted file is sent
-* everything is logged
-
-
-### Receiver side
-
-Go to receiver folder:
-
-```bash
-cd receiver_folder
-```
+### Receiver Side
 
 Run:
 
-```bash
-../receive.sh text.txt.age
+```
+./receive.sh text.txt.age
 ```
 
-What happens:
+---
 
-* file gets decrypted
-* checksum is verified
-* it tells if file is correct or not
+## Example Output
 
-
-## Output
-
-If everything is correct:
+Successful case:
 
 ```
 Decryption successful
 File integrity verified
 ```
 
-If something is wrong:
+Failure case:
 
 ```
-File corrupted or tampered
+Decryption failed
+File corrupted
 ```
 
 ---
 
-## Log File
+## Logging
 
-All transfers are saved in:
+All transfers are recorded in:
 
 ```
 transfer.log
@@ -145,33 +229,19 @@ Example:
 2026-05-01T10:30:11 | sender | localhost | text.txt | sha256:abc123 | SUCCESS
 ```
 
+---
 
-## Important Notes
+## Error Handling
 
-* never share your private key
-* always send encrypted file (.age)
-* always check checksum
-* use only test data (no real sensitive data)
+The scripts handle:
 
+- file not found  
+- missing keys  
+- encryption failure  
+- transfer failure  
+- checksum mismatch  
 
-## Limitations
+Errors are shown clearly to the user.
 
-* works only in command line
-* supports one receiver at a time
-* keys are handled manually
+---
 
-
-## Possible Improvements
-
-* support multiple receivers
-* automatic retry if transfer fails
-* better UI (maybe GUI version)
-* store config for users and keys
-
-
-## Conclusion
-
-This project shows a simple way to send files securely.
-Even though it is basic, it covers important concepts like encryption, secure transfer, and integrity checking.
-
-It helped me understand how real secure systems work in a simple way.
