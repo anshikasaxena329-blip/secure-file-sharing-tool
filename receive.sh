@@ -27,7 +27,7 @@ OUT_FILE="${ENC_FILE%.age}"
 
 echo "[+] Decrypting..."
 
-if ! age -d -i ../age_key.txt -o "$OUT_FILE" "$ENC_FILE"; then
+if ! age -d -i age_key.txt -o "$OUT_FILE" "$ENC_FILE"; then
     echo "Decryption failed! Maybe wrong key."
     exit 1
 fi
