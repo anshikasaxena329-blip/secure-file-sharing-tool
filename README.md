@@ -2,104 +2,176 @@
 
 ## Project Description
 
-In this project, a simple command-line tool used to send files securely.
-The main idea is to encrypt the file before sending so that only the receiver can read it.
+This project is about sending files securely using the command line.
 
-The checksumis used to check if the file gets changed during transfer.
-All the file transfers are saved in a log file.
+The main idea is simple:
 
-This project can be useful when we want to send important or private data safely.
+* before sending a file, we encrypt it
+* only the receiver can decrypt it
+* we also check if the file was changed during transfer using checksum
 
----
+This is useful when we are sending sensitive data like reports, notes, images, etc. so that no one else can read or modify it.
+
+
+
+## What this tool does
+
+* encrypts file using **age**
+* sends file using **SSH (scp)**
+* checks file integrity using **sha256 checksum**
+* keeps a record of transfers in a log file
+
+
 
 ## Setup Instructions
 
-### Step 1: Generate Keys
+### Step 1: Generate keys
 
-Run this command:
+Run:
 
+```bash
 ./setup_keys.sh
+```
 
 This will create:
-- a private key (age_key.txt), keep it safe
-- a public key, copy this
 
----
+* `age_key.txt` → this is private, do NOT share
+* public key → copy this and use in `send.sh`
 
-### Step 2: Add Public Key
 
-Open send.sh and paste your public key:
+### Step 2: Add public key
 
-PUBKEY="your_public_key_here"
+Open `send.sh`:
 
-Make sure:
-- copy only the part starting with "age1"
-- don’t add extra text
+```bash
+nano send.sh
+```
 
----
+Find:
 
-## How to Run
+```bash
+PUBKEY="PASTE_YOUR_PUBLIC_KEY_HERE"
+```
 
-### Sender Side
+Paste your public key (starting with `age1...`)
 
-Step 1: Create a file
 
-echo "Hello secure world" > notes.txt
 
-Step 2: Send the file
+## How to run the system
 
-./send.sh notes.txt
+### Sender side
 
-This will:
-- create checksum
-- encrypt the file
-- send it to receiver_folder
-- save details in log file
+Create a test file:
 
----
+```bash
+echo "this is a test file" > text.txt
+```
 
-### Receiver Side
+Send file:
 
-Step 1: Go to folder
+```bash
+./send.sh text.txt localhost
+```
 
+or
+
+```bash
+./send.sh text.txt user@IP
+```
+
+What happens:
+
+* checksum is created
+* file is encrypted
+* encrypted file is sent
+* everything is logged
+
+
+### Receiver side
+
+Go to receiver folder:
+
+```bash
 cd receiver_folder
+```
 
-Step 2: Receive file
+Run:
 
-../receive.sh notes.txt.age
+```bash
+../receive.sh text.txt.age
+```
 
-This will:
-- decrypt the file
-- check checksum
-- show result
+What happens:
 
----
+* file gets decrypted
+* checksum is verified
+* it tells if file is correct or not
+
 
 ## Output
 
-If correct:
+If everything is correct:
 
+```
 Decryption successful
 File integrity verified
+```
 
-If error:
+If something is wrong:
 
+```
 File corrupted or tampered
-
----
-
-## Notes
-
-- Do not share private key
-- Always send encrypted file (.age)
-- Always check checksum
-- Use test files only
+```
 
 ---
 
 ## Log File
 
-All transfers are saved in transfer.log like this:
+All transfers are saved in:
 
-2026-04-26T10:30:11 | sender | receiver | notes.txt | sha256:abc123 | SUCCESS
+```
+transfer.log
+```
 
+Format:
+
+```
+TIMESTAMP | SENDER | RECEIVER | FILENAME | CHECKSUM | STATUS
+```
+
+Example:
+
+```
+2026-05-01T10:30:11 | sender | localhost | text.txt | sha256:abc123 | SUCCESS
+```
+
+
+## Important Notes
+
+* never share your private key
+* always send encrypted file (.age)
+* always check checksum
+* use only test data (no real sensitive data)
+
+
+## Limitations
+
+* works only in command line
+* supports one receiver at a time
+* keys are handled manually
+
+
+## Possible Improvements
+
+* support multiple receivers
+* automatic retry if transfer fails
+* better UI (maybe GUI version)
+* store config for users and keys
+
+
+## Conclusion
+
+This project shows a simple way to send files securely.
+Even though it is basic, it covers important concepts like encryption, secure transfer, and integrity checking.
+
+It helped me understand how real secure systems work in a simple way.
