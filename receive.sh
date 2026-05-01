@@ -1,60 +1,71 @@
 #!/bin/bash
 
-# ===============================
-# SECURE FILE RECEIVER SCRIPT
-# ===============================
+# This script is used to receive and verify files
 
-# Step 1: take encrypted file input
+# It decrypts the file and checks if it was changed or not
+
 ENC_FILE=$1
 
-# Step 2: check input
+# Check input
+
 if [ -z "$ENC_FILE" ]; then
-    echo " Usage: ./receive.sh file.age"
-    exit 1
+echo "Usage: ./receive.sh file.age"
+exit 1
 fi
 
-# check if file exists
 if [ ! -f "$ENC_FILE" ]; then
-    echo " Encrypted file not found!"
-    exit 1
+echo "Encrypted file not found!"
+exit 1
 fi
 
-echo " Received file: $ENC_FILE"
+# Check age installed
 
-# ===============================
-# DECRYPT FILE
-# ===============================
+if ! command -v age &> /dev/null; then
+echo "age not installed!"
+exit 1
+fi
 
-# remove .age to get original name
+echo "[+] File received: $ENC_FILE"
+
+# Decrypt file
+
 OUT_FILE="${ENC_FILE%.age}"
 
-echo " Decrypting file..."
+echo "[+] Decrypting..."
 
-# decrypt using private key
-age -d -i ../age_key.txt -o "$OUT_FILE" "$ENC_FILE"
-
-# check decryption
-if [ $? -ne 0 ]; then
-    echo " Decryption failed (wrong key?)"
-    exit 1
+if ! age -d -i ../age_key.txt -o "$OUT_FILE" "$ENC_FILE"; then
+echo "Decryption failed! Maybe wrong key."
+exit 1
 fi
 
-echo " Decryption successful"
+echo "[✔] Decryption successful"
 
-# ===============================
-# VERIFY CHECKSUM
-# ===============================
+# Check checksum file exists
 
-# read original checksum
+if [ ! -f "$OUT_FILE.checksum" ]; then
+echo "Checksum file missing!"
+exit 1
+fi
+
+# Verify integrity
+
 ORIGINAL_CHECKSUM=$(cat "$OUT_FILE.checksum")
-
-# generate new checksum
 NEW_CHECKSUM=$(sha256sum "$OUT_FILE" | awk '{print $1}')
 
-echo " Verifying file..."
+echo "[+] Verifying integrity..."
+
+STATUS="SUCCESS"
 
 if [ "$ORIGINAL_CHECKSUM" == "$NEW_CHECKSUM" ]; then
-    echo " File integrity verified"
+echo "[✔] File integrity verified"
 else
-    echo " File corrupted or tampered"
+echo "[✘] File corrupted!"
+STATUS="FAILED (checksum)"
 fi
+
+# Log result
+
+TIMESTAMP=$(date -Iseconds)
+
+echo "$TIMESTAMP | receiver | local | $OUT_FILE | sha256:$NEW_CHECKSUM | $STATUS" >> ../transfer.log
+
