@@ -1,74 +1,106 @@
 #!/bin/bash
 
 # This script is used to send files securely
+# It takes a file, encrypts it using age, sends it either locally or via SSH,
+# and logs the full transfer details
 
-# It encrypts the file, sends it using SSH, and logs everything
-
+# Input arguments
 FILE=$1
-RECEIVER=$2   # example: user@192.168.1.10
-PUBKEY="PASTE_PUBLIC_KEY_HERE"
+RECEIVER=$2   # example: user@IP or localhost
+
+# Paste the public key generated from setup_keys.sh
+PUBKEY="age15k737r86x6ykadc2g93tr42wtru88rt0q4getj4e57rg66dagdfq6e2jhq"
+
+# Log file name
 LOGFILE="transfer.log"
 
-# Check inputs
+# ===============================
+# CHECK INPUT
+# ===============================
 
+# Check if file and receiver are provided
 if [ -z "$FILE" ] || [ -z "$RECEIVER" ]; then
-echo "Usage: ./send.sh <file> [user@ip](mailto:user@ip)"
-exit 1
+    echo "Usage: ./send.sh <file> <user@ip OR localhost>"
+    exit 1
 fi
 
-# Check file exists
-
+# Check if file exists
 if [ ! -f "$FILE" ]; then
-echo "File not found!"
-exit 1
+    echo "Error: File not found"
+    exit 1
 fi
 
-# Check age installed
-
-if ! command -v age &> /dev/null; then
-echo "age not installed!"
-exit 1
+# Check if age is installed
+if ! command -v age > /dev/null 2>&1; then
+    echo "Error: age is not installed"
+    exit 1
 fi
 
-echo "[+] File selected: $FILE"
+echo "File selected: $FILE"
 
-# Generate checksum for integrity check
+# ===============================
+# GENERATE CHECKSUM
+# ===============================
 
+# Create checksum of original file
 CHECKSUM=$(sha256sum "$FILE" | awk '{print $1}')
 echo "$CHECKSUM" > "$FILE.checksum"
 
-echo "[+] Checksum generated"
+echo "Checksum generated"
 
-# Encrypt file using receiver's public key
+# ===============================
+# ENCRYPT FILE
+# ===============================
 
 ENCRYPTED_FILE="$FILE.age"
 
-echo "[+] Encrypting file..."
+echo "Encrypting file..."
 
+# Encrypt using public key
 if ! age -r "$PUBKEY" -o "$ENCRYPTED_FILE" "$FILE"; then
-echo "Encryption failed!"
-exit 1
+    echo "Encryption failed"
+    exit 1
 fi
 
-echo "[✔] Encryption successful"
+echo "Encryption successful"
 
-# Send file using SSH (secure transfer)
+# ===============================
+# TRANSFER FILE
+# ===============================
 
-echo "[+] Sending file via SSH..."
+echo "Transferring file..."
 
-if scp "$ENCRYPTED_FILE" "$FILE.checksum" "$RECEIVER:~/receiver_folder/"; then
-echo "[✔] Transfer successful"
-STATUS="SUCCESS"
+# If sending to same machine
+if [ "$RECEIVER" == "localhost" ]; then
+    echo "Using local transfer"
+
+    # Create receiver folder if not exists
+    mkdir -p receiver_folder
+
+    # Copy files locally
+    cp "$ENCRYPTED_FILE" receiver_folder/
+    cp "$FILE.checksum" receiver_folder/
+
+    STATUS="SUCCESS"
+
 else
-echo "Transfer failed!"
-STATUS="FAILED (transfer)"
+    echo "Sending via SSH..."
+
+    # Send files via scp
+    if scp "$ENCRYPTED_FILE" "$FILE.checksum" "$RECEIVER:~/receiver_folder/"; then
+        STATUS="SUCCESS"
+    else
+        echo "Transfer failed"
+        STATUS="FAILED (transfer)"
+    fi
 fi
 
-# Logging everything
+# ===============================
+# LOGGING
+# ===============================
 
-TIMESTAMP=$(date -Iseconds)
+TIMESTAMP=$(date +"%Y-%m-%dT%H:%M:%S")
 
 echo "$TIMESTAMP | sender | $RECEIVER | $FILE | sha256:$CHECKSUM | $STATUS" >> "$LOGFILE"
 
-echo "[✔] Logged successfully"
-
+echo "Logged successfully"
